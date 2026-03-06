@@ -1,6 +1,6 @@
 import { NodeExecutor } from "../node-executor";
 
-export class HttpNode extends NodeExecutor {
+export class HttpNode implements NodeExecutor {
   async execute(input: any, config: any): Promise<any> {
     const { url, method, headers, body } = config
     const response = await fetch(url, {

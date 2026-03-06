@@ -1,4 +1,3 @@
-export class NodeExecutor {
- async execute(input: any, config: any): Promise<any> {
-}
+export interface NodeExecutor {
+  execute(input: any, config: any): Promise<any>
 }
