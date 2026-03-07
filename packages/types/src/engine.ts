@@ -1,0 +1,87 @@
+// Node Types
+export type NodeType =
+  | "TRIGGER"
+  | "HTTP"
+  | "LOG"
+  | "AI"
+  | "CONDITIONAL"
+  | "FUNCTION"
+
+// Workflow Status
+export type WorkflowRunStatus =
+  | "PENDING"
+  | "RUNNING"
+  | "FAILED"
+  | "COMPLETED"
+
+// Node Configurations
+export interface HttpNodeConfig {
+  url: string;
+  method: "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
+  headers?: Record<string, string>;
+  body?: unknown;
+  timeout?: number;
+}
+
+export interface LogNodeConfig {
+  level?: "debug" | "info" | "warn" | "error";
+  prefix?: string;
+}
+
+export interface TriggerNodeConfig {
+  triggerType?: "manual" | "scheduled" | "webhook";
+  schedule?: string;
+}
+
+export type NodeConfig = HttpNodeConfig | LogNodeConfig | TriggerNodeConfig | Record<string, unknown>;
+
+// Workflow Node
+export interface WorkflowNode {
+  id: string;
+  type: NodeType;
+  name: string;
+  config: NodeConfig;
+  input?: unknown;
+}
+
+// Workflow Edge
+export interface WorkflowEdge {
+  from: string;
+  to: string;
+  condition?: string;
+}
+
+// Workflow
+export interface Workflow {
+  id: string;
+  name: string;
+  nodes: WorkflowNode[];
+  edges: WorkflowEdge[];
+  status: WorkflowRunStatus;
+}
+
+// Execution Types
+export interface ExecutionContext {
+  [nodeId: string]: ExecutionResult;
+}
+
+export interface ExecutionResult<T = unknown> {
+  success: boolean;
+  data?: T;
+  error?: string;
+  startTime: string;
+  endTime: string;
+  duration: number;
+}
+
+export interface WorkflowExecutionResult {
+  workflowId: string;
+  status: WorkflowRunStatus;
+  context: ExecutionContext;
+  startTime: string;
+  endTime: string;
+  duration: number;
+  error?: string;
+}
+
+
