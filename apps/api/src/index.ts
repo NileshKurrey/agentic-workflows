@@ -7,7 +7,7 @@ app.use(express.json())
 const engine = new ExecutionEngine()
 
 app.post("/run", async (req, res) => {
-  await engine.execute(req.body)
+  await engine.run(req.body)
   res.json({ status: "started" })
 })
 

@@ -33,6 +33,13 @@ export interface TriggerNodeConfig {
   schedule?: string;
 }
 
+export interface NodeExecutionPolicy {
+  retries?: number;
+  retryDelayMs?: number;
+  timeoutMs?: number;
+  continueOnError?: boolean;
+}
+
 export type NodeConfig = HttpNodeConfig | LogNodeConfig | TriggerNodeConfig | Record<string, unknown>;
 
 // Workflow Node
@@ -42,6 +49,7 @@ export interface WorkflowNode {
   name: string;
   config: NodeConfig;
   input?: unknown;
+  policy?: NodeExecutionPolicy;
 }
 
 // Workflow Edge
@@ -69,15 +77,28 @@ export interface ExecutionResult<T = unknown> {
   success: boolean;
   data?: T;
   error?: string;
+  attempts: number;
   startTime: string;
   endTime: string;
   duration: number;
+}
+
+export interface FailedNode {
+  nodeId: string;
+  nodeType: NodeType;
+  error: string;
+}
+
+export interface WorkflowRunOptions {
+  continueOnError?: boolean;
+  defaultNodePolicy?: NodeExecutionPolicy;
 }
 
 export interface WorkflowExecutionResult {
   workflowId: string;
   status: WorkflowRunStatus;
   context: ExecutionContext;
+  failedNodes: FailedNode[];
   startTime: string;
   endTime: string;
   duration: number;
