@@ -1,0 +1,41 @@
+version: "3.8"
+
+services:
+  valkey:
+    image: valkey:latest
+    container_name: valkey-workflows
+    ports:
+      - "6379:6379"
+    volumes:
+      - valkey-data:/data
+    command: valkey-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres-workflows
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: workflows
+      POSTGRES_PASSWORD: workflows_password
+      POSTGRES_DB: workflows_db
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U workflows"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  valkey-data:
+  postgres-data:
+
+networks:
+  default:
+    name: workflows-network

@@ -12,9 +12,12 @@
   "license": "ISC",
   "dependencies": {
     "@repo/engine": "workspace:^",
+    "@repo/types": "workspace:^",
+    "bullmq": "^5.69.3",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "redis": "^4.6.0"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",

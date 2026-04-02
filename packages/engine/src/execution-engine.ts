@@ -65,6 +65,20 @@ export class ExecutionEngine {
         context[node.id] = nodeResult;
         executedNodes.add(node.id);
 
+        // Emit node executed event
+        if (options.onNodeExecuted) {
+          await options.onNodeExecuted({
+            workflowId: workflow.id,
+            nodeId: node.id,
+            nodeType: node.type,
+            success: nodeResult.success,
+            attempts: nodeResult.attempts,
+            duration: nodeResult.duration,
+            error: nodeResult.error,
+            timestamp: new Date().toISOString(),
+          });
+        }
+
         if (!nodeResult.success) {
           failedNodes.push({
             nodeId: node.id,
@@ -95,12 +109,24 @@ export class ExecutionEngine {
 
       const endTime = new Date();
       const hasFailure = Object.values(context).some((result) => !result.success);
+      const duration = endTime.getTime() - startTime.getTime();
 
       logger.info("Workflow execution completed", {
         workflowId: workflow.id,
         status: hasFailure ? "FAILED" : "COMPLETED",
-        duration: endTime.getTime() - startTime.getTime(),
+        duration,
       });
+
+      // Emit workflow completed event
+      if (options.onWorkflowCompleted) {
+        await options.onWorkflowCompleted({
+          workflowId: workflow.id,
+          status: hasFailure ? "FAILED" : "COMPLETED",
+          failedNodes,
+          duration,
+          timestamp: endTime.toISOString(),
+        });
+      }
 
       return {
         workflowId: workflow.id,
@@ -109,16 +135,29 @@ export class ExecutionEngine {
         failedNodes,
         startTime: startTime.toISOString(),
         endTime: endTime.toISOString(),
-        duration: endTime.getTime() - startTime.getTime(),
+        duration,
       };
     } catch (error) {
       const endTime = new Date();
       const errorMessage = error instanceof Error ? error.message : String(error);
+      const duration = endTime.getTime() - startTime.getTime();
 
       logger.error("Workflow execution failed", {
         workflowId: workflow.id,
         error: errorMessage,
       });
+
+      // Emit workflow completed event with error
+      if (options.onWorkflowCompleted) {
+        await options.onWorkflowCompleted({
+          workflowId: workflow.id,
+          status: "FAILED",
+          failedNodes,
+          duration,
+          error: errorMessage,
+          timestamp: endTime.toISOString(),
+        });
+      }
 
       return {
         workflowId: workflow.id,
@@ -127,7 +166,7 @@ export class ExecutionEngine {
         failedNodes,
         startTime: startTime.toISOString(),
         endTime: endTime.toISOString(),
-        duration: endTime.getTime() - startTime.getTime(),
+        duration,
         error: errorMessage,
       };
     }
