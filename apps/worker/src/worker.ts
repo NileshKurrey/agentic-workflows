@@ -1,65 +1,38 @@
-import { Worker } from "bullmq";
-import { createClient } from "redis";
 import { ExecutionEngine } from "@repo/engine";
-import type { NodeExecutedEvent, WorkflowCompletedEvent } from "@repo/types";
+import { getWorkerEnv } from "./config/env";
+import { createRedisConnection } from "./connections/redis";
+import { RedisProgressPublisher } from "./services/progress-publisher";
+import { createWorkflowWorker } from "./worker/workflow-worker";
 
-const redis = createClient({
-  socket: {
-    host: process.env.REDIS_HOST || "localhost",
-    port: parseInt(process.env.REDIS_PORT || "6379"),
-  },
-});
+async function bootstrap(): Promise<void> {
+  const env = getWorkerEnv();
+  const redis = createRedisConnection(env.redisHost, env.redisPort);
+  await redis.connect();
 
-redis.connect();
-
-const engine = new ExecutionEngine();
-
-const worker = new Worker("workflow", async (job) => {
-  const workflow = job.data;
-  const workflowId = workflow.id;
-
-  // Callback to publish node execution events to Redis pub/sub
-  const onNodeExecuted = async (event: NodeExecutedEvent) => {
-    await redis.publish(
-      `workflow:${workflowId}:progress`,
-      JSON.stringify({
-        type: "node-executed",
-        data: event,
-      })
-    );
-  };
-
-  // Callback to publish workflow completion event
-  const onWorkflowCompleted = async (event: WorkflowCompletedEvent) => {
-    await redis.publish(
-      `workflow:${workflowId}:progress`,
-      JSON.stringify({
-        type: "workflow-completed",
-        data: event,
-      })
-    );
-  };
-
-  // Execute workflow with callbacks
-  await engine.run(workflow, {
-    onNodeExecuted,
-    onWorkflowCompleted,
+  const progressPublisher = new RedisProgressPublisher(redis);
+  const engine = new ExecutionEngine();
+  const worker = createWorkflowWorker({
+    queueName: env.workflowQueueName,
+    workerOptions: {
+      connection: {
+        host: env.redisHost,
+        port: env.redisPort,
+      },
+    },
+    engine,
+    progressPublisher,
   });
-});
 
-worker.on("completed", (job) => {
-  console.log(`Job ${job.id} completed`);
-});
+  console.log("Worker started, listening for workflow jobs...");
 
-worker.on("failed", (job, error) => {
-  console.error(`Job ${job?.id} failed:`, error);
-});
+  process.on("SIGTERM", async () => {
+    await worker.close();
+    await redis.quit();
+    process.exit(0);
+  });
+}
 
-console.log("Worker started, listening for workflow jobs...");
-
-// Graceful shutdown
-process.on("SIGTERM", async () => {
-  await worker.close();
-  await redis.quit();
-  process.exit(0);
+bootstrap().catch((error) => {
+  console.error("Failed to bootstrap worker", error);
+  process.exit(1);
 });
