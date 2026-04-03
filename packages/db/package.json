@@ -1,7 +1,7 @@
 {
-  "name": "@repo/domain",
+  "name": "@repo/db",
   "version": "1.0.0",
-  "description": "",
+  "description": "Shared database access for agentic workflows",
   "main": "src/index.ts",
   "types": "src/index.ts",
   "exports": {
@@ -13,14 +13,17 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^17.3.1",
+    "drizzle-orm": "^0.44.7",
+    "pg": "^8.20.0",
+    "postgres": "^3.4.7"
+  },
   "devDependencies": {
     "@repo/typescript-config": "workspace:^",
+    "@types/pg": "^8.20.0",
+    "drizzle-kit": "^0.31.10",
+    "tsx": "^4.7.0",
     "typescript": "^5.9.3"
-  },
-  "dependencies": {
-    "@repo/types": "workspace:^"
   }
 }
