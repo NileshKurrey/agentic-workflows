@@ -21,13 +21,14 @@ export const workflows = pgTable("workflows", {
   id: uuid("id").defaultRandom().primaryKey(),
   userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
-  status: text("status").notNull().default("DRAFT"),
+  status: text("status").notNull().default("PENDING"),
+  edges: jsonb("edges").notNull().default([]),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
 export const nodes = pgTable("nodes", {
-  id: uuid("id").defaultRandom().primaryKey(),
+  id: text("id").primaryKey(),
   workflowId: uuid("workflow_id").notNull().references(() => workflows.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   type: text("type").notNull(),
@@ -41,6 +42,7 @@ export const nodes = pgTable("nodes", {
 
 export const workflowExecutions = pgTable("workflow_executions", {
   id: uuid("id").defaultRandom().primaryKey(),
+  runId: text("run_id").notNull().unique(),
   workflowId: uuid("workflow_id").notNull().references(() => workflows.id, { onDelete: "cascade" }),
   status: text("status").notNull(),
   context: jsonb("context").notNull().default({}),

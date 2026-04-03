@@ -1,4 +1,5 @@
 import { ExecutionEngine } from "@repo/engine";
+import { createDatabaseClient, WorkflowStore } from "@repo/db";
 import { getWorkerEnv } from "./config/env";
 import { createRedisConnection } from "./connections/redis";
 import { RedisProgressPublisher } from "./services/progress-publisher";
@@ -6,6 +7,9 @@ import { createWorkflowWorker } from "./worker/workflow-worker";
 
 async function bootstrap(): Promise<void> {
   const env = getWorkerEnv();
+  const databaseClient = createDatabaseClient(env.databaseUrl);
+  const workflowStore = new WorkflowStore(databaseClient.db);
+
   const redis = createRedisConnection(env.redisHost, env.redisPort);
   await redis.connect();
 
@@ -21,6 +25,7 @@ async function bootstrap(): Promise<void> {
     },
     engine,
     progressPublisher,
+    workflowStore,
   });
 
   console.log("Worker started, listening for workflow jobs...");
@@ -28,6 +33,7 @@ async function bootstrap(): Promise<void> {
   process.on("SIGTERM", async () => {
     await worker.close();
     await redis.quit();
+    await databaseClient.close();
     process.exit(0);
   });
 }

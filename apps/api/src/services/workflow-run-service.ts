@@ -1,4 +1,6 @@
 import type { WorkflowQueue } from "../queue/workflow-queue";
+import { WorkflowStore } from "@repo/db";
+import type { WorkflowExecutionJob } from "@repo/types";
 
 export interface WorkflowRunResponse {
   status: "queued";
@@ -7,12 +9,30 @@ export interface WorkflowRunResponse {
 }
 
 export class WorkflowRunService {
-  constructor(private readonly workflowQueue: WorkflowQueue) {}
+  constructor(
+    private readonly workflowQueue: WorkflowQueue,
+    private readonly workflowStore: WorkflowStore,
+  ) {}
 
-  async queueRun(workflow: { id: string; [key: string]: unknown }): Promise<WorkflowRunResponse> {
+  async queueRun(workflowId: string): Promise<WorkflowRunResponse> {
+    const workflow = await this.workflowStore.getWorkflowById(workflowId);
+
+    if (!workflow) {
+      throw new Error(`Workflow not found: ${workflowId}`);
+    }
+
     const runId = `${workflow.id}-${Date.now()}`;
+    const payload: WorkflowExecutionJob = {
+      runId,
+      workflowId: workflow.id,
+    };
 
-    const job = await this.workflowQueue.add("execute", workflow, {
+    await this.workflowStore.queueExecution({
+      runId,
+      workflowId: workflow.id,
+    });
+
+    const job = await this.workflowQueue.add("execute", payload, {
       jobId: runId,
       attempts: 3,
       backoff: {
@@ -28,19 +48,23 @@ export class WorkflowRunService {
     };
   }
 
-  async getRunStatus(runId: string): Promise<{ runId: string; jobId: string | undefined; state: string } | null> {
+  async getRunStatus(
+    runId: string,
+  ): Promise<{ runId: string; jobId: string | undefined; state: string; executionStatus?: string } | null> {
     const job = await this.workflowQueue.getJob(runId);
+    const execution = await this.workflowStore.getExecutionByRunId(runId);
 
-    if (!job) {
+    if (!job && !execution) {
       return null;
     }
 
-    const state = await job.getState();
+    const state = job ? await job.getState() : "not-found";
 
     return {
       runId,
-      jobId: job.id?.toString(),
+      jobId: job?.id?.toString(),
       state,
+      executionStatus: execution?.status,
     };
   }
 }

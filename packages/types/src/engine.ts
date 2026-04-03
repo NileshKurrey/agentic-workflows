@@ -131,4 +131,9 @@ export interface WorkflowExecutionResult {
   error?: string;
 }
 
+export interface WorkflowExecutionJob {
+  runId: string;
+  workflowId: string;
+}
+
 
