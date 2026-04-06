@@ -1,10 +1,6 @@
 import type { Workflow, WorkflowEdge, WorkflowNode, WorkflowRunStatus } from "@repo/types";
-import { WorkflowStore } from "@repo/db";
-
-export interface CreateUserRequest {
-  email: string;
-  name?: string;
-}
+import type { Container } from "../di/container";
+import type { WorkflowStore } from "@repo/db";
 
 export interface CreateWorkflowRequest {
   userId: string;
@@ -14,17 +10,11 @@ export interface CreateWorkflowRequest {
   status?: WorkflowRunStatus;
 }
 
-export class WorkflowDefinitionService {
-  constructor(private readonly workflowStore: WorkflowStore) {}
+export class WorkflowService {
+  private readonly workflowStore: WorkflowStore;
 
-  async createUser(input: CreateUserRequest): Promise<{ id: string; email: string; name: string | null }> {
-    const existing = await this.workflowStore.getUserByEmail(input.email);
-
-    if (existing) {
-      return existing;
-    }
-
-    return this.workflowStore.createUser(input);
+  constructor(container: Container) {
+    this.workflowStore = container.get<WorkflowStore>("workflowStore");
   }
 
   async createWorkflow(input: CreateWorkflowRequest): Promise<{ id: string }> {

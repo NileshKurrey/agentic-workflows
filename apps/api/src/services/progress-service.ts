@@ -1,8 +1,14 @@
 import type { Response } from "express";
+import type { Container } from "../di/container";
+import { DEPENDENCIES } from "../di/container";
 import type { RedisClient } from "../connections/redis";
 
-export class SseProgressService {
-  constructor(private readonly redis: RedisClient) {}
+export class ProgressService {
+  private readonly redis: RedisClient;
+
+  constructor(container: Container) {
+    this.redis = container.get<RedisClient>(DEPENDENCIES.REDIS);
+  }
 
   async streamRunProgress(runId: string, response: Response): Promise<void> {
     response.setHeader("Content-Type", "text/event-stream");

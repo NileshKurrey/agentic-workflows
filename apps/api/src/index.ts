@@ -1,45 +1,35 @@
-import express from "express";
-import { createDatabaseClient, WorkflowStore } from "@repo/db";
 import { getApiEnv } from "./config/env";
-import { createRedisConnection } from "./connections/redis";
-import { createWorkflowQueue } from "./queue/workflow-queue";
-import { createWorkflowRouter } from "./routes/workflow-routes";
-import { SseProgressService } from "./services/sse-progress-service";
-import { WorkflowDefinitionService } from "./services/workflow-definition-service";
-import { WorkflowRunService } from "./services/workflow-run-service";
+import { Container, ExpressHttpHandler, initializeApp, setupRoutes } from "./di";
+import { UserController } from "./controllers/user-controller";
+import { WorkflowController } from "./controllers/workflow-controller";
+import { ExecutionController } from "./controllers/execution-controller";
 
 async function bootstrap(): Promise<void> {
   const env = getApiEnv();
-  const app = express();
 
-  app.use(express.json());
+  // Initialize DI container
+  const container = new Container();
 
-  const databaseClient = createDatabaseClient(env.databaseUrl);
-  const workflowStore = new WorkflowStore(databaseClient.db);
+  // Bootstrap application dependencies
+  const { databaseClient, redis, workflowQueue } = await initializeApp(container, env);
 
-  const redis = createRedisConnection(env.redisHost, env.redisPort);
-  await redis.connect();
+  // Create controllers with container for DI
+  const userController = new UserController(container);
+  const workflowController = new WorkflowController(container);
+  const executionController = new ExecutionController(container);
 
-  const workflowQueue = createWorkflowQueue(env.workflowQueueName, {
-    connection: {
-      host: env.redisHost,
-      port: env.redisPort,
-    },
+  // Create HTTP handler (Express adapter)
+  const httpHandler = new ExpressHttpHandler();
+
+  // Setup routes
+  setupRoutes(httpHandler, {
+    userController,
+    workflowController,
+    executionController,
   });
 
-  const workflowRunService = new WorkflowRunService(workflowQueue, workflowStore);
-  const workflowDefinitionService = new WorkflowDefinitionService(workflowStore);
-  const sseProgressService = new SseProgressService(redis);
-
-  app.use(
-    createWorkflowRouter({
-      workflowRunService,
-      sseProgressService,
-      workflowDefinitionService,
-    })
-  );
-
-  app.listen(env.port, () => {
+  // Start server
+  await httpHandler.listen(env.port, () => {
     console.log(`API running on http://localhost:${env.port}`);
     console.log("POST /users - Create or return user");
     console.log("POST /workflows - Create workflow and nodes");
@@ -50,10 +40,13 @@ async function bootstrap(): Promise<void> {
     console.log("GET /run/:runId/status - Get job status");
   });
 
+  // Graceful shutdown
   process.on("SIGTERM", async () => {
+    console.log("SIGTERM received, shutting down gracefully...");
     await workflowQueue.close();
     await redis.quit();
     await databaseClient.close();
+    await httpHandler.close();
     process.exit(0);
   });
 }

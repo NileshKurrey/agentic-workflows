@@ -1,5 +1,7 @@
+import type { Container } from "../di/container";
+import { DEPENDENCIES } from "../di/container";
 import type { WorkflowQueue } from "../queue/workflow-queue";
-import { WorkflowStore } from "@repo/db";
+import type { WorkflowStore } from "@repo/db";
 import type { WorkflowExecutionJob } from "@repo/types";
 
 export interface WorkflowRunResponse {
@@ -8,11 +10,14 @@ export interface WorkflowRunResponse {
   jobId: string | undefined;
 }
 
-export class WorkflowRunService {
-  constructor(
-    private readonly workflowQueue: WorkflowQueue,
-    private readonly workflowStore: WorkflowStore,
-  ) {}
+export class ExecutionService {
+  private readonly workflowQueue: WorkflowQueue;
+  private readonly workflowStore: WorkflowStore;
+
+  constructor(container: Container) {
+    this.workflowQueue = container.get<WorkflowQueue>(DEPENDENCIES.WORKFLOW_QUEUE);
+    this.workflowStore = container.get<WorkflowStore>("workflowStore");
+  }
 
   async queueRun(workflowId: string): Promise<WorkflowRunResponse> {
     const workflow = await this.workflowStore.getWorkflowById(workflowId);
@@ -48,23 +53,7 @@ export class WorkflowRunService {
     };
   }
 
-  async getRunStatus(
-    runId: string,
-  ): Promise<{ runId: string; jobId: string | undefined; state: string; executionStatus?: string } | null> {
-    const job = await this.workflowQueue.getJob(runId);
-    const execution = await this.workflowStore.getExecutionByRunId(runId);
-
-    if (!job && !execution) {
-      return null;
-    }
-
-    const state = job ? await job.getState() : "not-found";
-
-    return {
-      runId,
-      jobId: job?.id?.toString(),
-      state,
-      executionStatus: execution?.status,
-    };
+  async getRunStatus(runId: string): Promise<{ runId: string; status: string } | null> {
+    return this.workflowStore.getExecutionByRunId(runId);
   }
 }
