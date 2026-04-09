@@ -20,7 +20,7 @@ async function bootstrap(): Promise<void> {
 
   // Create HTTP handler (Express adapter)
   const httpHandler = new ExpressHttpHandler();
-
+  
   // Setup routes
   setupRoutes(httpHandler, {
     userController,

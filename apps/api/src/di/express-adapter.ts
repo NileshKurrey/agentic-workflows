@@ -1,4 +1,5 @@
 import express, { Express, Request, Response } from "express";
+import { createErrorHandler, createNotFoundHandler } from "../errors";
 import type { IHttpHandler, IHttpRequest, IHttpResponse, IRouter } from "./http-handler";
 
 /**
@@ -49,52 +50,41 @@ class ExpressResponse implements IHttpResponse {
 class ExpressRouter implements IRouter {
   constructor(private router: express.Router) {}
 
+  /**
+   * Wrap async handler to automatically pass errors to Express error handler
+   * Express 5 catches errors and passes them to the error middleware
+   */
+  private wrapAsyncHandler(
+    handler: (req: IHttpRequest, res: IHttpResponse) => Promise<void>
+  ): express.Handler {
+    return async (req, res, next) => {
+      try {
+        await handler(new ExpressRequest(req), new ExpressResponse(res));
+      } catch (error) {
+        // Pass error to Express error handler middleware
+        next(error);
+      }
+    };
+  }
+
   getRouter(): express.Router {
     return this.router;
   }
 
   post(path: string, handler: (req: IHttpRequest, res: IHttpResponse) => Promise<void>): void {
-    this.router.post(path, async (req, res) => {
-      try {
-        await handler(new ExpressRequest(req), new ExpressResponse(res));
-      } catch (error) {
-        console.error("Unhandled POST route error", error);
-        res.status(500).json({ error: "Internal server error" });
-      }
-    });
+    this.router.post(path, this.wrapAsyncHandler(handler));
   }
 
   get(path: string, handler: (req: IHttpRequest, res: IHttpResponse) => Promise<void>): void {
-    this.router.get(path, async (req, res) => {
-      try {
-        await handler(new ExpressRequest(req), new ExpressResponse(res));
-      } catch (error) {
-        console.error("Unhandled GET route error", error);
-        res.status(500).json({ error: "Internal server error" });
-      }
-    });
+    this.router.get(path, this.wrapAsyncHandler(handler));
   }
 
   put(path: string, handler: (req: IHttpRequest, res: IHttpResponse) => Promise<void>): void {
-    this.router.put(path, async (req, res) => {
-      try {
-        await handler(new ExpressRequest(req), new ExpressResponse(res));
-      } catch (error) {
-        console.error("Unhandled PUT route error", error);
-        res.status(500).json({ error: "Internal server error" });
-      }
-    });
+    this.router.put(path, this.wrapAsyncHandler(handler));
   }
 
   delete(path: string, handler: (req: IHttpRequest, res: IHttpResponse) => Promise<void>): void {
-    this.router.delete(path, async (req, res) => {
-      try {
-        await handler(new ExpressRequest(req), new ExpressResponse(res));
-      } catch (error) {
-        console.error("Unhandled DELETE route error", error);
-        res.status(500).json({ error: "Internal server error" });
-      }
-    });
+    this.router.delete(path, this.wrapAsyncHandler(handler));
   }
 
   use(pathOrMiddleware: string | ((req: IHttpRequest, res: IHttpResponse, next: () => void) => void), router?: IRouter): void {
@@ -158,6 +148,13 @@ export class ExpressHttpHandler implements IHttpHandler {
   }
 
   async listen(port: number, callback: () => void): Promise<void> {
+    // Register centralized error handler middleware AFTER all routes are mounted
+    // Must be 4-parameter function for Express 5 error handling
+    this.app.use(createErrorHandler());
+
+    // Register 404 handler to catch unmatched routes
+    this.app.use(createNotFoundHandler());
+
     return new Promise((resolve) => {
       const server = this.app.listen(port, () => {
         callback();
