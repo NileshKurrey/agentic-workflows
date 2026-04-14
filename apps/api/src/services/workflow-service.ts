@@ -1,5 +1,5 @@
 import type { Workflow, WorkflowEdge, WorkflowNode, WorkflowRunStatus } from "@repo/types";
-import type { Container } from "../di/container";
+import type { Container } from "../di/core/container";
 import type { WorkflowStore } from "@repo/db";
 
 export interface CreateWorkflowRequest {

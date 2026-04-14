@@ -1,3 +1,8 @@
+import dotenv from "dotenv";
+
+// Load environment variables from .env file
+dotenv.config();
+
 export interface ApiEnv {
   port: number;
   redisHost: string;

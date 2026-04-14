@@ -11,16 +11,25 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@repo/db": "workspace:^",
     "@repo/engine": "workspace:^",
     "@repo/types": "workspace:^",
+    "axios": "^1.13.5",
+    "bcrypt": "^6.0.0",
+    "bcryptjs": "^3.0.3",
     "bullmq": "^5.69.3",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
-    "@repo/db": "workspace:^",
     "express": "^5.2.1",
-    "redis": "^4.6.0"
+    "ioredis": "^5.10.1",
+    "jsonwebtoken": "^9.0.3",
+    "redis": "^4.6.0",
+    "winston": "^3.19.0",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@types/cookie-parser": "^1.4.10",
     "@types/express": "^5.0.6",
     "tsx": "^4.7.0",
     "typescript": "^5.9.3"

@@ -1,4 +1,4 @@
-import type { Container } from "../di/container";
+import type { Container } from "../di/core/container";
 import type { Store } from "@repo/db";
 
 export interface CreateUserRequest {

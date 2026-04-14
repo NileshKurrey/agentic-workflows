@@ -1,5 +1,5 @@
-import type { Container } from "../di/container";
-import { DEPENDENCIES } from "../di/container";
+import type { Container } from "../di/core/container";
+import { DEPENDENCIES } from "../di/core/container";
 import type { WorkflowQueue } from "../queue/workflow-queue";
 import type { WorkflowStore } from "@repo/db";
 import type { WorkflowExecutionJob } from "@repo/types";

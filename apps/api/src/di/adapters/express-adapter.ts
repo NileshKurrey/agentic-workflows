@@ -1,5 +1,6 @@
 import express, { Express, Request, Response } from "express";
-import { createErrorHandler, createNotFoundHandler } from "../errors";
+import { createErrorHandler, createNotFoundHandler } from "../../errors";
+import cookieParser from "cookie-parser";
 import type { IHttpHandler, IHttpRequest, IHttpResponse, IRouter } from "./http-handler";
 
 /**
@@ -109,7 +110,7 @@ export class ExpressHttpHandler implements IHttpHandler {
     this.app = express();
     this.app.use(express.json({ limit: "1mb" }));
     this.app.use(express.urlencoded({ extended: true, limit: "1mb" }));
-
+    this.app.use(cookieParser());
     this.app.use((req, res, next) => {
       res.setHeader("X-Content-Type-Options", "nosniff");
       res.setHeader("X-Frame-Options", "DENY");

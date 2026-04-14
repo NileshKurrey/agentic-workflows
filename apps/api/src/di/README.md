@@ -1,53 +1,230 @@
-# Dependency Injection & HTTP Handler Architecture
+# Dependency Injection Module
 
-## Overview
+This module provides a structured and organized dependency injection system for the API. It follows a clear separation of concerns with subdirectories for different aspects of DI management.
 
-This architecture decouples the HTTP framework (Express) from the business logic, making it easy to swap frameworks in the future (e.g., Fastify, Hono, etc.).
+## Directory Structure
 
-## Components
+```
+di/
+├── core/              # Container and dependency definitions
+│   ├── container.ts   # DIContainer class and DEPENDENCIES keys
+│   └── index.ts       # Public exports
+├── registration/      # Application initialization
+│   ├── bootstrap.ts   # initializeApp and setupRoutes functions
+│   └── index.ts       # Public exports
+├── adapters/          # HTTP abstraction layer
+│   ├── http-handler.ts   # HTTP interfaces and contracts
+│   ├── express-adapter.ts # Express implementation
+│   └── index.ts          # Public exports
+├── helpers/           # Dependency accessor functions
+│   ├── dependency-helpers.ts # Typed helper functions
+│   └── index.ts              # Public exports
+├── index.ts           # Main barrel export (imports from subdirectories)
+└── README.md          # This file
+```
 
-### 1. **Container** (`di/container.ts`)
-- **Purpose**: Manages all singleton dependencies
-- **Usage**: Register and retrieve dependencies throughout the application
-- **Benefits**: Centralized dependency management, easy testing with mocks
+## Modules Overview
 
+### Core (`./core`)
+Contains the central DI container and dependency key definitions.
+
+**Key Exports:**
+- `Container` - The main DI container class
+- `DEPENDENCIES` - Enum-like object with all registered dependency keys
+
+**Usage:**
 ```typescript
+import { Container, DEPENDENCIES } from "./di/core";
+
 const container = new Container();
-container.register(DEPENDENCIES.USER_SERVICE, userService);
-const userService = container.get(DEPENDENCIES.USER_SERVICE);
+container.register(DEPENDENCIES.DATABASE, db);
 ```
 
-### 2. **HTTP Handler Abstraction** (`di/http-handler.ts`)
-- **Interfaces**:
-  - `IHttpRequest`: Abstraction for request objects
-  - `IHttpResponse`: Abstraction for response objects
-  - `IRouter`: Abstraction for router operations
-  - `IHttpHandler`: Main interface for HTTP handlers
+### Registration (`./registration`)
+Handles application initialization and route setup with full dependency wiring.
 
-- **Benefits**: Not tied to Express specifics, framework-agnostic
+**Key Exports:**
+- `initializeApp()` - Initializes all infrastructure (DB, Redis, Queue, Services, etc.)
+- `setupRoutes()` - Registers all routes with their controllers
 
-### 3. **Express Adapter** (`di/express-adapter.ts`)
-- **Class**: `ExpressHttpHandler`
-- **Implements**: `IHttpHandler` interface
-- **Usage**: Adapts Express to the abstraction layer
-
+**Usage:**
 ```typescript
-const httpHandler = new ExpressHttpHandler();
-await httpHandler.listen(3000, () => console.log("Server running"));
+import { initializeApp, setupRoutes } from "./di/registration";
+
+const container = new Container();
+await initializeApp(container, env);
+setupRoutes(httpHandler, controllers);
 ```
 
-### 4. **Bootstrap** (`di/bootstrap.ts`)
-- **Functions**:
-  - `initializeApp()`: Sets up all dependencies in the container
-  - `setupRoutes()`: Registers routes with the HTTP handler
+### Adapters (`./adapters`)
+Provides HTTP abstraction layer allowing easy swapping of HTTP frameworks.
 
-- **Usage**: Called from `index.ts` to initialize the application
+**Key Exports:**
+- `IHttpHandler` - HTTP handler interface
+- `IHttpRequest` - Request interface
+- `IHttpResponse` - Response interface
+- `IRouter` - Router interface
+- `ExpressHttpHandler` - Express.js implementation
 
-## Adding a New HTTP Handler
+**Usage:**
+```typescript
+import { ExpressHttpHandler } from "./di/adapters";
 
-To add support for Fastify (or any other framework):
+const httpHandler = new ExpressHttpHandler();
+```
 
-### Step 1: Create Fastify Adapter
+### Helpers (`./helpers`)
+Provides typed accessor functions for retrieving dependencies from the container.
+
+**Key Exports:**
+- `getBcrypt()` - Get bcryptjs library
+- `getAxios()` - Get axios HTTP client
+- `getLogger()` - Get Winston logger
+- `getIORedis()` - Get IORedis library
+- `getDatabase()` - Get database instance
+- `getDatabaseClient()` - Get database client
+- `getRedis()` - Get Redis client
+- `getWorkflowQueue()` - Get workflow queue
+
+**Usage:**
+```typescript
+import { getLogger, getBcrypt } from "./di/helpers";
+
+export class UserService {
+  constructor(private container: Container) {}
+
+  async hashPassword(password: string): Promise<string> {
+    const bcrypt = getBcrypt(this.container);
+    return bcrypt.hash(password, 10);
+  }
+
+  log(message: string): void {
+    const logger = getLogger(this.container);
+    logger.info(message);
+  }
+}
+```
+
+## Dependency Keys
+
+Available in `DEPENDENCIES`:
+
+**Infrastructure:**
+- `DATABASE` - Database instance
+- `DATABASE_CLIENT` - Database client
+- `REDIS` - Redis client
+- `WORKFLOW_QUEUE` - Workflow queue
+
+**Services:**
+- `USER_SERVICE` - User service
+- `WORKFLOW_SERVICE` - Workflow service
+- `EXECUTION_SERVICE` - Execution service
+- `PROGRESS_SERVICE` - Progress service
+
+**Environment:**
+- `ENV` - Environment configuration
+
+**Third-party:**
+- `BCRYPT` - bcryptjs library
+- `AXIOS` - axios HTTP client
+- `LOGGER` - Winston logger
+- `IOREDIS` - IORedis library
+
+## Usage Examples
+
+### In Controllers
+```typescript
+import { Container } from "./di/core";
+import { getDatabase, getLogger } from "./di/helpers";
+
+export class UserController {
+  constructor(private container: Container) {}
+
+  async getUser(req: IHttpRequest, res: IHttpResponse): Promise<void> {
+    const logger = getLogger(this.container);
+    const db = getDatabase(this.container);
+    
+    logger.info("Fetching user");
+    // ... implementation
+  }
+}
+```
+
+### In Services
+```typescript
+import { Container, DEPENDENCIES } from "./di/core";
+import { getBcrypt, getAxios } from "./di/helpers";
+
+export class AuthService {
+  constructor(private container: Container) {}
+
+  async authenticate(username: string, password: string): Promise<boolean> {
+    const bcrypt = getBcrypt(this.container);
+    // ... implementation
+  }
+
+  async fetchRemoteData(url: string): Promise<any> {
+    const axios = getAxios(this.container);
+    const response = await axios.get(url);
+    return response.data;
+  }
+}
+```
+
+### In Main App
+```typescript
+import { getApiEnv } from "./config/env";
+import {
+  Container,
+  ExpressHttpHandler,
+  initializeApp,
+  setupRoutes,
+} from "./di";
+
+async function bootstrap(): Promise<void> {
+  const env = getApiEnv();
+  const container = new Container();
+
+  await initializeApp(container, env);
+
+  const httpHandler = new ExpressHttpHandler();
+  setupRoutes(httpHandler, { /* controllers */ });
+
+  await httpHandler.listen(env.port, () => {
+    console.log(`API running on port ${env.port}`);
+  });
+}
+
+bootstrap().catch(console.error);
+```
+
+## Benefits of This Structure
+
+1. **Clear Separation of Concerns** - Each module has a single responsibility
+2. **Easy to Navigate** - Logical organization makes code discovery simple
+3. **Scalability** - Easy to add new dependencies or modules
+4. **Testability** - Isolated modules are easier to test
+5. **Maintainability** - Changes to one area don't affect others
+6. **Type Safety** - Full TypeScript support with typed accessors
+7. **Framework Agnostic** - HTTP layer abstraction allows framework swapping
+
+## Adding New Dependencies
+
+To add a new dependency:
+
+1. Add the key to `DEPENDENCIES` in `./core/container.ts`
+2. Register it in `initializeApp()` in `./registration/bootstrap.ts`
+3. Create a helper function in `./helpers/dependency-helpers.ts`
+4. Export the new helper from `./helpers/index.ts`
+5. Use it in your services/controllers
+
+## Key Decisions
+
+- **Subdirectory Organization** - Reduces file count and improves discoverability
+- **Barrel Exports** - Each subdirectory has an index.ts for clean imports
+- **Main Index Re-export** - Single import source for all DI functionality
+- **Helper Functions** - Type-safe, convenient dependency access
+- **HTTP Abstraction** - Allows future framework migrations
 ```typescript
 // di/fastify-adapter.ts
 import Fastify from "fastify";

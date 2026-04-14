@@ -1,7 +1,7 @@
 import type { WorkflowNode, WorkflowEdge } from "@repo/types";
-import type { Container } from "../di/container";
-import { DEPENDENCIES } from "../di/container";
-import type { IHttpRequest, IHttpResponse } from "../di/http-handler";
+import type { Container } from "../di/core/container";
+import { DEPENDENCIES } from "../di/core/container";
+import type { IHttpRequest, IHttpResponse } from "../di/adapters/http-handler";
 import type { WorkflowService } from "../services/workflow-service";
 import { ValidationError, NotFoundError } from "../errors";
 import { getParamAsString, isValidUuid } from "./validation";

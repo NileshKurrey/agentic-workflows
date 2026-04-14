@@ -1,6 +1,6 @@
 import type { Response } from "express";
-import type { Container } from "../di/container";
-import { DEPENDENCIES } from "../di/container";
+import type { Container } from "../di/core/container";
+import { DEPENDENCIES } from "../di/core/container";
 import type { RedisClient } from "../connections/redis";
 
 export class ProgressService {

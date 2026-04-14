@@ -1,10 +1,10 @@
 import type { Database, DatabaseClient } from "@repo/db";
-import type { WorkflowQueue } from "../queue/workflow-queue";
-import type { RedisClient } from "../connections/redis";
-import type { UserService } from "../services/user-service";
-import type { WorkflowService } from "../services/workflow-service";
-import type { ExecutionService } from "../services/execution-service";
-import type { ProgressService } from "../services/progress-service";
+import type { WorkflowQueue } from "../../queue/workflow-queue";
+import type { RedisClient } from "../../connections/redis";
+import type { UserService } from "../../services/user-service";
+import type { WorkflowService } from "../../services/workflow-service";
+import type { ExecutionService } from "../../services/execution-service";
+import type { ProgressService } from "../../services/progress-service";
 
 /**
  * Dependency Injection Container
@@ -63,4 +63,10 @@ export const DEPENDENCIES = {
 
   // Environment
   ENV: "env",
+
+  // Third-party utilities
+  BCRYPT: "bcrypt",
+  AXIOS: "axios",
+  LOGGER: "logger",
+  IOREDIS: "ioredis",
 } as const;

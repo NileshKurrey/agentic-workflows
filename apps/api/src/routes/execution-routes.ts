@@ -1,4 +1,4 @@
-import type { IRouter } from "../di/http-handler";
+import type { IRouter } from "../di/adapters/http-handler";
 import { ExecutionController } from "../controllers/execution-controller";
 
 export function createExecutionRoutes(router: IRouter, executionController: ExecutionController): void {

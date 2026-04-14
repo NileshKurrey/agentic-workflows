@@ -1,14 +1,18 @@
-import type { Container } from "./container";
-import { DEPENDENCIES } from "./container";
-import type { IHttpHandler } from "./http-handler";
-import type { UserController } from "../controllers/user-controller";
-import type { WorkflowController } from "../controllers/workflow-controller";
-import type { ExecutionController } from "../controllers/execution-controller";
-import { createUserRoutes, createWorkflowRoutes, createExecutionRoutes } from "../routes";
-import { UserService } from "../services/user-service";
-import { WorkflowService } from "../services/workflow-service";
-import { ExecutionService } from "../services/execution-service";
-import { ProgressService } from "../services/progress-service";
+import type { Container } from "../core/container";
+import { DEPENDENCIES } from "../core/container";
+import type { IHttpHandler } from "../adapters/http-handler";
+import type { UserController } from "../../controllers/user-controller";
+import type { WorkflowController } from "../../controllers/workflow-controller";
+import type { ExecutionController } from "../../controllers/execution-controller";
+import { createUserRoutes, createWorkflowRoutes, createExecutionRoutes } from "../../routes";
+import { UserService } from "../../services/user-service";
+import { WorkflowService } from "../../services/workflow-service";
+import { ExecutionService } from "../../services/execution-service";
+import { ProgressService } from "../../services/progress-service";
+import axios from "axios";
+import bcryptjs from "bcryptjs";
+import winston from "winston";
+import IORedis from "ioredis";
 
 /**
  * Bootstrap application with dependency injection
@@ -17,8 +21,8 @@ import { ProgressService } from "../services/progress-service";
 export async function initializeApp(container: Container, apiEnv: any) {
   // Infrastructure setup
   const { createDatabaseClient, WorkflowStore } = await import("@repo/db");
-  const { createRedisConnection } = await import("../connections/redis");
-  const { createWorkflowQueue } = await import("../queue/workflow-queue");
+  const { createRedisConnection } = await import("../../connections/redis");
+  const { createWorkflowQueue } = await import("../../queue/workflow-queue");
 
   // Initialize database
   const databaseClient = createDatabaseClient(apiEnv.databaseUrl);
@@ -42,6 +46,29 @@ export async function initializeApp(container: Container, apiEnv: any) {
 
   // Store the workflowStore in container
   container.register("workflowStore", workflowStore);
+
+  // Initialize third-party utilities
+  const logger = winston.createLogger({
+    level: process.env.LOG_LEVEL || "info",
+    format: winston.format.combine(
+      winston.format.timestamp(),
+      winston.format.errors({ stack: true }),
+      winston.format.json(),
+    ),
+    transports: [
+      new winston.transports.Console({
+        format: winston.format.combine(
+          winston.format.colorize(),
+          winston.format.simple(),
+        ),
+      }),
+    ],
+  });
+
+  container.register(DEPENDENCIES.BCRYPT, bcryptjs);
+  container.register(DEPENDENCIES.AXIOS, axios);
+  container.register(DEPENDENCIES.LOGGER, logger);
+  container.register(DEPENDENCIES.IOREDIS, IORedis);
 
   // Initialize services with container for DI
   const userService = new UserService(container);

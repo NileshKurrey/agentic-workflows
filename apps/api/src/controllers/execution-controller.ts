@@ -1,6 +1,6 @@
-import type { Container } from "../di/container";
-import { DEPENDENCIES } from "../di/container";
-import type { IHttpRequest, IHttpResponse } from "../di/http-handler";
+import type { Container } from "../di/core/container";
+import { DEPENDENCIES } from "../di/core/container";
+import type { IHttpRequest, IHttpResponse } from "../di/adapters/http-handler";
 import type { ExecutionService } from "../services/execution-service";
 import type { ProgressService } from "../services/progress-service";
 import { ValidationError, NotFoundError } from "../errors";
